@@ -38,14 +38,11 @@ def generate_client(amount):
     items = Item.objects.all()
     for i in range(amount):
         amount_item_types = random.randrange(0, len(items))
-        items = []
         client = Client.objects.create()
-        for k in amount_item_types:
-            item = CustomersItems.create(item=random.choice(items), amount=random.randrange(0, 1000000), client=client)
-            items.append(item)
-        client.items.add(items)
+        for k in range(amount_item_types):
+            CustomersItems.objects.create(item=random.choice(items), amount=random.randrange(0, 1000000), client=client)
         client.save()
         clients.append(client)
-    print('Успешно сгенерированы клиенты: ' + clients)
+    print('Успешно сгенерированы клиенты: ' + '; '.join([f'Клиент №{client.id}' for client in clients]))
 
     
