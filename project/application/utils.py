@@ -2,6 +2,7 @@ import random
 import string
 from .models import Item, Client, Warehouse, ItemsForStorage, CustomersItems
 
+TRANSPORTATION_RATE = 0.01
 
 letters = string.ascii_lowercase
 
@@ -45,4 +46,36 @@ def generate_client(amount):
         clients.append(client)
     print('Успешно сгенерированы клиенты: ' + '; '.join([f'Клиент №{client.id}' for client in clients]))
 
-    
+
+
+def calculate_quickest_route(location_data, items): # склады, которые ближе
+    final_sum = 0
+    for warehouse_id, distance in location_data.items():
+        for item in items:
+            storage = ItemsForStorage.objects.filter(warehouse=warehouse_id, item=item['item_id'])
+            rate = storage.values()['rate']
+            limit = storage.values()['limit']
+            if limit - item['amount'] >= 0:
+                final_sum += item['amount'] * rate + distance * TRANSPORTATION_RATE
+                break
+            else:
+                final_sum += (item['amount'] - limit) * rate + distance * TRANSPORTATION_RATE
+                item['amount'] == item['amount'] - limit
+    print(final_sum)
+
+
+def get_routes(client_id):
+    client = Client.objects.get(id=client_id)
+    #print(client) # вывести клиента
+    client_items = list(CustomersItems.objects.filter(client=client).values())
+    #print(*client_items) # вывести его товары
+    warehouses = set()
+    for item in client_items:
+        queryset = ItemsForStorage.objects.filter(item=item['item_id']).values() # здесь нужно отсортировать по rate и limit ?
+        warehouses_ids = set(queryset.values_list('warehouse_id', flat=True))
+        warehouses.update(warehouses_ids)
+    distances = {}
+    for warehouse in warehouses:
+        distances[warehouse] = random.randrange(1, 100)
+    sorted_dict = {k: v for k, v in sorted(distances.items(), key=lambda item: item[1])}
+    calculate_quickest_route(sorted_dict, client_items)

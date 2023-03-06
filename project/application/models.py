@@ -62,3 +62,6 @@ class CustomersItems(models.Model):
     client = models.ForeignKey(
         Client,
         on_delete=models.CASCADE)
+    
+    class Meta:
+        unique_together = (('item', 'client'),)
