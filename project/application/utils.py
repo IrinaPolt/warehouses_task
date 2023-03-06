@@ -28,10 +28,9 @@ def generate_warehouses(amount):
                                           rate=random.randrange(0, 10), warehouse=new_warehouse) for _ in range(amount_item_types)]
             storage_items.extend(items_list)
         ItemsForStorage.objects.bulk_create(storage_items)
-        new_warehouse.storage.add(*storage_items)
         new_warehouse.save()
-    warehouses.append(new_warehouse)
-    print('Успешно сгенерированы склады: ' + '; '.join([warehouse.id for warehouse in warehouses]))
+        warehouses.append(new_warehouse)
+    print('Успешно сгенерированы склады: ' + '; '.join([f'Склад №{warehouse.id}' for warehouse in warehouses]))
 
 
 def generate_client(amount):
