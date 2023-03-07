@@ -42,6 +42,9 @@ class ItemsForStorage(models.Model):
         verbose_name='Склад'
     )
 
+    class Meta:
+        unique_together = (('item', 'warehouse'),)
+
 
 class Client(models.Model):
     items = models.ManyToManyField(
