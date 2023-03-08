@@ -1,5 +1,6 @@
 import random
 import string
+from collections import OrderedDict
 from .models import Item, Client, Warehouse, ItemsForStorage, CustomersItems
 
 TRANSPORTATION_RATE = 0.01
@@ -63,33 +64,61 @@ def calculate_quickest_route(location_data, items): # склады, которы
                 try:
                     storage = ItemsForStorage.objects.get(warehouse=warehouse_id, item=item.item.id)
                     rate = storage.rate
-                    limit = storage.limit
-                    if item.amount <= limit:
-                        print(f'Клиент может оставить весь товар {item.item} на складе №{warehouse_id}')
+                    if item.amount <= storage.limit:
+                        print(f'Клиент может оставить весь оставшийся товар {item.item} на складе №{warehouse_id}')
                         final_sum += item.amount * rate + distance * TRANSPORTATION_RATE
+                        storage.limit -= item.amount
                         item.amount = 0
                         break
                     else:
-                        print(item.amount)
-                        item.amount = item.amount - limit
-                        print(item.amount)
-                        final_sum += (item.amount - limit) * rate + distance * TRANSPORTATION_RATE
+                        print(f'Клиент может оставить {storage.limit} товара {item.item} на складе №{warehouse_id}')
+                        item.amount = item.amount - storage.limit
+                        storage.limit = 0
+                        final_sum += item.amount * rate + distance * TRANSPORTATION_RATE
                 except ItemsForStorage.DoesNotExist:
                     continue
     for item in items:
         if item.amount != 0:
-            print(f'Не удалось найти склад для товара {item.item}')
-    print(final_sum)
+            print(f'Не удалось найти склад для товара {item.item} или был превышен лимит хранения существующих складов')
+    print(f'Итоговая сумма для пути с наиболее близкими складами: {final_sum}')
+
+
+def calculate_lowest_rate_route(distances, items): # склады с более дешевой ставкой
+    final_sum = 0
+    for item in items:
+        rates = {}
+        for key in distances.keys():
+            storage = ItemsForStorage.objects.filter(item=item.item, warehouse=key)
+            rate = storage.values('rate')
+            limit = storage.values('limit')
+            if rate.exists():
+                rates[key] = (rate[0]['rate'], limit[0]['limit'])
+            else:
+                print(f'{item.item} не может быть размещен на складе №{key}')
+        preferrable_warehouse = sorted(rates.items(), key=lambda item: item[1])[0] # (id, (rate, limit))
+        storage = ItemsForStorage.objects.get(item=item.item, warehouse=preferrable_warehouse[0])
+        if item.amount <= preferrable_warehouse[1][1]:
+            print(f'Весь оставшийся товар {item.item} может быть размещен на складе №{preferrable_warehouse[0]}')
+            final_sum += item.amount * preferrable_warehouse[1][0] + distances[preferrable_warehouse[0]] * TRANSPORTATION_RATE
+            item.amount = 0
+            storage.limit = preferrable_warehouse[1][1] - item.amount
+        else:
+            print(f'Товар {item.item} может быть размещен на складе №{preferrable_warehouse[0]} в количестве {preferrable_warehouse[1][1]}')
+            item.amount = item.amount - preferrable_warehouse[1][1]
+            storage.limit = 0
+            final_sum += item.amount * preferrable_warehouse[1][0] + distances[preferrable_warehouse[0]] * TRANSPORTATION_RATE
+    print(f'Итоговая сумма для пути со складами с более низкой ставкой: {final_sum}')
 
 
 def get_routes(client_id):
     client = Client.objects.get(id=client_id)
+    items_queryset = CustomersItems.objects.filter(client=client)
     #print(client) # вывести клиента
-    client_items_list = [item for item in CustomersItems.objects.filter(client=client)]
+    client_items_list = [item for item in items_queryset]
     #print(client_items_list) # вывести его товары
     warehouses = set()
     for item in client_items_list:
-        queryset = ItemsForStorage.objects.filter(item=item.item) # здесь нужно отсортировать по rate и limit ?
+        queryset = ItemsForStorage.objects.filter(item=item.item)
         warehouses_ids = set(queryset.values_list('warehouse_id', flat=True))
         warehouses.update(warehouses_ids)
     distances = {}
@@ -97,3 +126,4 @@ def get_routes(client_id):
         distances[warehouse] = random.randrange(1, 100)
     sorted_dict = {k: v for k, v in sorted(distances.items(), key=lambda item: item[1])}
     calculate_quickest_route(sorted_dict, client_items_list)
+    calculate_lowest_rate_route(sorted_dict, items_queryset)
