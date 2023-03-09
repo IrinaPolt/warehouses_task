@@ -83,35 +83,17 @@ def calculate_quickest_route(location_data, items): # склады, которы
 
 
 def calculate_lowest_rate_route(distances, items): # склады с более дешевой ставкой
-    visited_warehouses = {}
+    visited_warehouses = []
     final_sum = 0
     for item in items:
-        if len(visited_warehouses) != 0:
-            for warehouse in visited_warehouses.keys():
-                try:
-                    storage = ItemsForStorage.objects.get(item=item.item, warehouse=warehouse)
-                    limit = visited_warehouses[warehouse]
-                    if 0 < item.amount <= limit:
-                        print(f'Весь оставшийся товар {item.item} может быть размещен на складе №{warehouse}')
-                        final_sum += item.amount * storage.rate
-                        visited_warehouses[warehouse] -= item.amount 
-                        item.amount = 0
-                    else:
-                        print(f'Товар {item.item} может быть размещен на складе №{warehouse} в количестве {limit}')
-                        final_sum += item.amount * storage.rate
-                        item.amount -= limit
-                        visited_warehouses[warehouse] = 0
-                except ItemsForStorage.DoesNotExist:
-                    continue
+        if item.amount == 0:
+            continue
         rates = {}
-
-        # нужно прерывать цикл, если лимит склада или количество товара равны нулю. где и как?
-
         for key in distances.keys():
             storage = ItemsForStorage.objects.filter(item=item.item, warehouse=key)
             rate = storage.values('rate')
             limit = storage.values('limit')
-            if rate.exists():
+            if rate.exists() and limit != 0:
                 rates[key] = (rate[0]['rate'], limit[0]['limit'])
             else:
                 print(f'{item.item} не может быть размещен на складе №{key}')
@@ -119,15 +101,21 @@ def calculate_lowest_rate_route(distances, items): # склады с более 
         storage = ItemsForStorage.objects.get(item=item.item, warehouse=preferrable_warehouse[0])
         if item.amount <= preferrable_warehouse[1][1]:
             print(f'Весь оставшийся товар {item.item} может быть размещен на складе №{preferrable_warehouse[0]}')
-            final_sum += item.amount * preferrable_warehouse[1][0] + distances[preferrable_warehouse[0]] * TRANSPORTATION_RATE
+            if preferrable_warehouse[0] in visited_warehouses:
+                final_sum += item.amount * preferrable_warehouse[1][0]
+            else:
+                final_sum += item.amount * preferrable_warehouse[1][0] + distances[preferrable_warehouse[0]] * TRANSPORTATION_RATE
             storage.limit = preferrable_warehouse[1][1] - item.amount
             item.amount = 0
-            visited_warehouses[preferrable_warehouse[0]] = storage.limit
         elif preferrable_warehouse[1][1] < item.amount:
             print(f'Товар {item.item} может быть размещен на складе №{preferrable_warehouse[0]} в количестве {preferrable_warehouse[1][1]}')
             item.amount = item.amount - preferrable_warehouse[1][1]
             storage.limit = 0
-            final_sum += item.amount * preferrable_warehouse[1][0] + distances[preferrable_warehouse[0]] * TRANSPORTATION_RATE
+            if preferrable_warehouse[0] in visited_warehouses:
+                final_sum += item.amount * preferrable_warehouse[1][0]
+            else:
+                final_sum += item.amount * preferrable_warehouse[1][0] + distances[preferrable_warehouse[0]] * TRANSPORTATION_RATE
+        visited_warehouses.append(preferrable_warehouse[0])
     print(f'Итоговая сумма для пути со складами с более низкой ставкой: {final_sum}')
 
 
@@ -145,5 +133,5 @@ def get_routes(client_id):
     for warehouse in warehouses:
         distances[warehouse] = random.randrange(1, 100)
     sorted_dict = {k: v for k, v in sorted(distances.items(), key=lambda item: item[1])}
-    calculate_quickest_route(sorted_dict, client_items_list)
+    # calculate_quickest_route(sorted_dict, client_items_list)
     calculate_lowest_rate_route(sorted_dict, CustomersItems.objects.filter(client=client)) # повторный запрос к БД необходим, чтобы одна функция рутинга не влияла на вычисления другой
