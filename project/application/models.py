@@ -15,7 +15,7 @@ class Warehouse(models.Model):
     storage = models.ManyToManyField(
         Item,
         through='ItemsForStorage',
-        verbose_name = 'Товары на хранение',
+        verbose_name='Товары на хранение',
         )
     general_limit = models.PositiveIntegerField(
         verbose_name='Общий лимит товара для данного склада'
@@ -23,8 +23,8 @@ class Warehouse(models.Model):
 
 
 class ItemsForStorage(models.Model):
-    """Вспомогательная модель для создания склада: позволяет добавить тип принимаемого товара,
-    лимит и тарифы"""
+    """Вспомогательная модель для создания склада:
+    позволяет добавить тип принимаемого товара, лимит и тарифы"""
 
     item = models.ForeignKey(
         Item,
@@ -65,6 +65,6 @@ class CustomersItems(models.Model):
     client = models.ForeignKey(
         Client,
         on_delete=models.CASCADE)
-    
+
     class Meta:
         unique_together = (('item', 'client'),)
