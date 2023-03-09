@@ -25,6 +25,6 @@ from application.utils import generate_items; generate_items(10)
 ```
 
 ### Примеры вывода
-![Пример работы](static/example.jpeg)
-![Пример работы](static/example2.jpeg)
+![Пример работы](static/example.jpg)
+![Пример работы](static/example2.jpg)
 
