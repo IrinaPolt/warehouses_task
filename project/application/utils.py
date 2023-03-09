@@ -205,12 +205,12 @@ def get_routes(client_id):
     print(f'Клиент выбирает маршрут №{chosen_route}')
     if chosen_route == 1:
         min_transp_cost_route(sorted_dict, client_items_list, flag=True)
-        print(f'Потрачено: {price_1}')
+        print(f'Потрачено: {"{:.2f}".format(price_1)}. Товарный баланс клиента:\n')
     else:
         min_storage_rate_route(sorted_dict,
                                CustomersItems.objects.filter(client=client),
                                flag=True)
-        print(f'Потрачено: {price_2}. Товарный баланс клиента:\n')
+        print(f'Потрачено: {"{:.2f}".format(price_2)}. Товарный баланс клиента:\n')
     for item in client_items_list:
         print(f'Название: {item.item.title}, '
               f'количество: {item.amount}')
